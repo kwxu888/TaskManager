@@ -63,6 +63,7 @@
     <Compile Include="Modules\HomeModule.cs" />
     <Compile Include="Modules\LoginModule.cs" />
     <Compile Include="Modules\ExcelModule.cs" />
+    <Compile Include="Modules\TaskLogModule.cs" />
     <Compile Include="Modules\TaskModule.cs" />
     <Compile Include="Startup.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -86,6 +87,8 @@
     <None Include="Views\Home\DestTop.cshtml" />
     <None Include="Views\Home\Index.cshtml" />
     <None Include="Views\Shared\_Layout.cshtml" />
+    <None Include="Views\TaskLog\Grid.cshtml" />
+    <None Include="Views\TaskLog\View.cshtml" />
     <None Include="Views\Task\Edit.cshtml" />
     <None Include="Views\Task\Grid.cshtml" />
     <None Include="Views\_ViewStart.cshtml" />

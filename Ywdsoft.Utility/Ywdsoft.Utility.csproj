@@ -101,6 +101,7 @@
     <Compile Include="Log\LogHelper.cs" />
     <Compile Include="NVelocity\FileGen.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Quartz\CustomJobListener.cs" />
     <Compile Include="Quartz\CustomTriggerListener.cs" />
     <Compile Include="Quartz\QuartzHelper.cs" />
     <Compile Include="Quartz\TaskUtil.cs" />

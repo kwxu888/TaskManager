@@ -65,3 +65,32 @@ UNION ALL
 SELECT '61baa648-d1e8-e511-b79d-54ee75868db8','发送信息任务','','0 0/3 6-23 * * ?' ,'Ywdsoft.Task','Ywdsoft.Task.TaskSet.SendMessageJob',0,'每天6:00-23:00每3分钟运行一次'
 
 GO
+
+
+
+
+ 
+GO
+IF NOT EXISTS(SELECT 1 FROM sysobjects WHERE id=OBJECT_ID('[p_TaskLog]'))
+BEGIN
+/*==============================================================*/
+/* Table: p_TaskLog                                              */
+/*==============================================================*/
+CREATE TABLE [dbo].[p_TaskLog](
+	[LogID] uniqueidentifier   DEFAULT newsequentialid() ,
+	[TaskID] varchar(50) ,
+	[RunTime] datetime   ,
+	[IsSuccess] int    ,
+	[Result] nvarchar(1000)    
+	PRIMARY KEY(LogID)
+)
+	
+
+declare @CurrentUser sysname
+select @CurrentUser = user_name()
+execute sp_addextendedproperty 'MS_Description', '任务日志表','user', @CurrentUser, 'table', 'p_TaskLog'
+execute sp_addextendedproperty 'MS_Description',  '任务ID' ,'user', @CurrentUser, 'table', 'p_TaskLog', 'column', 'TaskID'
+execute sp_addextendedproperty 'MS_Description',  '运行时间' ,'user', @CurrentUser, 'table', 'p_TaskLog', 'column', 'RunTime'
+execute sp_addextendedproperty 'MS_Description',  '是否成功' ,'user', @CurrentUser, 'table', 'p_TaskLog', 'column', 'IsSuccess'
+execute sp_addextendedproperty 'MS_Description',  '结果备注' ,'user', @CurrentUser, 'table', 'p_TaskLog', 'column', 'Result'
+end

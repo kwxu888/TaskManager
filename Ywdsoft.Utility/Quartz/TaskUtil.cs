@@ -85,6 +85,46 @@ namespace Ywdsoft.Utility
         /// </summary>
         public string Remark { get; set; }
 
+
+    }
+
+    /// <summary>
+    /// 任务日志实体
+    /// </summary>
+    public class TaskLogUtil
+    {
+        /// <summary>
+        /// 任务ID
+        /// </summary>
+        public Guid LogID { get; set; }
+
+        /// <summary>
+        /// 任务ID
+        /// </summary>
+        public string TaskID { get; set; }
+
+        /// <summary>
+        /// 任务ID
+        /// </summary>
+        public string TaskName { get; set; }
+
+
+
+        /// <summary>
+        /// 任务时间
+        /// </summary>
+        public DateTime? RunTime { get; set; }
+
+        /// <summary>
+        /// 是否成功
+        /// </summary>
+        public int? IsSuccess { get; set; }
+
+        /// <summary>
+        /// 运行结果
+        /// </summary>
+        public string Result { get; set; }
+
     }
 
     /// <summary>
@@ -108,11 +148,15 @@ namespace Ywdsoft.Utility
     /// </summary>
     public class TaskHelper
     {
+
+        #region 作业
         private static string InsertSQL = @"INSERT INTO dbo.p_Task(TaskID,TaskName,TaskParam,CronExpressionString,Assembly,Class,Status,CronRemark,Remark,LastRunTime)
                             VALUES(@TaskID,@TaskName,@TaskParam,@CronExpressionString,@Assembly,@Class,@Status,@CronRemark,@Remark,@LastRunTime)";
 
         private static string UpdateSQL = @"UPDATE dbo.p_Task SET TaskName=@TaskName,TaskParam=@TaskParam,CronExpressionString=@CronExpressionString,Assembly=@Assembly,
                                 Class=@Class,CronRemark=@CronRemark,Remark=@Remark,LastRunTime=@LastRunTime WHERE TaskID=@TaskID";
+
+
         /// <summary>
         /// 获取指定id任务数据
         /// </summary>
@@ -129,7 +173,8 @@ namespace Ywdsoft.Utility
         /// <param name="TaskID">任务id</param>
         public static void DeleteById(string TaskID)
         {
-            QuartzHelper.DeleteJob(TaskID);
+            TaskUtil taskUtil = GetById(TaskID);
+            QuartzHelper.DeleteJob(taskUtil);
             SQLHelper.ExecuteNonQuery("DELETE FROM p_Task WHERE TaskID=@TaskID", new { TaskID = TaskID });
         }
 
@@ -140,13 +185,14 @@ namespace Ywdsoft.Utility
         /// <param name="Status">任务状态</param>
         public static void UpdateTaskStatus(string TaskID, TaskStatus Status)
         {
+            TaskUtil taskUtil = GetById(TaskID);
             if (Status == TaskStatus.RUN)
             {
-                QuartzHelper.ResumeJob(TaskID);
+                QuartzHelper.ResumeJob(taskUtil);
             }
             else
             {
-                QuartzHelper.PauseJob(TaskID);
+                QuartzHelper.PauseJob(taskUtil);
             }
             SQLHelper.ExecuteNonQuery("UPDATE p_Task SET Status=@Status WHERE TaskID=@TaskID", new { TaskID = TaskID, Status = Status });
         }
@@ -333,5 +379,93 @@ namespace Ywdsoft.Utility
             }
             return result;
         }
+        #endregion
+
+        #region 日志
+        private static string InsertLogSQL = @"INSERT INTO dbo.p_TaskLog(TaskID,RunTime,IsSuccess,Result)
+                            VALUES(@TaskID,@RunTime,@IsSuccess,@Result)";
+
+
+        /// <summary>
+        /// 保存日志任务
+        /// </summary>
+        /// <param name="value">日志</param>
+        /// <returns>保存日志结果</returns>
+        public static JsonBaseModel<string> SaveTaskLog(TaskLogUtil value)
+        {
+            JsonBaseModel<string> result = new JsonBaseModel<string>();
+            result.HasError = true;
+            if (value == null)
+            {
+                result.Message = "参数空异常";
+                return result;
+            }
+            try
+            {
+                SQLHelper.ExecuteNonQuery(InsertLogSQL, value);
+                result.HasError = false;
+                result.Result = value.TaskID.ToString();
+            }
+            catch (Exception ex)
+            {
+                result.HasError = true;
+                result.Message = ex.Message;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 根据条件查询任务
+        /// </summary>
+        /// <param name="condition">查询条件</param>
+        /// <returns>符合条件的任务</returns>
+        public static JsonBaseModel<List<TaskLogUtil>> QueryLog(QueryCondition condition)
+        {
+            JsonBaseModel<List<TaskLogUtil>> result = new JsonBaseModel<List<TaskLogUtil>>();
+            if (string.IsNullOrEmpty(condition.SortField))
+            {
+                condition.SortField = "RunTime";
+                condition.SortOrder = "DESC";
+            }
+            Hashtable ht = Pagination.QueryBase<TaskLogUtil>(
+                @"SELECT p_Tasklog.*,p_Task.TaskName FROM dbo.p_Tasklog
+                    LEFT JOIN dbo.p_Task ON dbo.p_Task.TaskID = p_Tasklog.TaskId", condition);
+            result.Result = ht["data"] as List<TaskLogUtil>;
+            result.TotalCount = Convert.ToInt32(ht["total"]);
+            result.TotalPage = result.CalculateTotalPage(condition.PageSize, result.TotalCount.Value, condition.IsPagination);
+            return result;
+        }
+
+        /// <summary>
+        /// 获取指定id任务数据
+        /// </summary>
+        /// <param name="TaskID">任务id</param>
+        /// <returns>任务数据</returns>
+        public static TaskLogUtil GetLogById(string LogID)
+        {
+            return SQLHelper.Single<TaskLogUtil>(
+                @"SELECT p_Tasklog.*,p_Task.TaskName FROM dbo.p_Tasklog
+                    LEFT JOIN dbo.p_Task ON dbo.p_Task.TaskID = p_Tasklog.TaskId WHERE LogID=@LogID", new { LogID = LogID });
+        }
+
+        /// <summary>
+        /// 删除指定id日志
+        /// </summary>
+        /// <param name="LogID">日志id</param>
+        public static void DeleteLogById(string LogID)
+        {
+
+            SQLHelper.ExecuteNonQuery("DELETE FROM p_TaskLog WHERE LogID=@LogID", new { LogID = LogID });
+        }
+        /// <summary>
+        /// 删除指定天数前的日志
+        /// </summary>
+        /// <param name="Days">Days</param>
+        public static void DeleteLog(int Days)
+        {
+
+            SQLHelper.ExecuteNonQuery("DELETE FROM p_TaskLog WHERE Datediff(d,RunTime,GETDate())>@Days", new { Days = Days });
+        }
+        #endregion
     }
 }

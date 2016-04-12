@@ -1,0 +1,353 @@
+﻿@inherits Nancy.ViewEngines.Razor.NancyRazorViewBase
+@{
+    ViewBag.Title = "任务列表";
+
+}
+@section style{
+<!-- jqgrid-->
+<link href="~/Content/Css/plugins/jqgrid/ui.jqgrid.css" rel="stylesheet">
+}
+
+<div class="row-fluid clearfix bb-1 mb10" id="input_custom_searchbox">
+    <div class="col-sm-5 pl0">
+        <div class="input-group">
+            <span class="input-group-addon">任务名称</span>
+            <input type="text" class="form-control" id="txt_TaskName">
+        </div>
+
+    </div>
+    <div class="col-sm-5  pl0">
+        <div class="input-group">
+            <span class="input-group-addon">创建时间</span>
+            <div class="input-group col-sm-12 ">
+                <input type="text" class="form-control col-sm-6  layer-date" name="start" id="txt_runStart" value="@(DateTime.Now.AddMinutes(-5).ToString("yyyy-MM-dd HH:mm:ss"))" />
+                <span class="input-group-addon" style="border-left:none; border-right:0;">到</span>
+                <input type="text" class="form-control col-sm-6  layer-date" name="end" id="txt_runEnd" value="@(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"))"/>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-2 pl0">
+        <button class="btn btn-primary" id="btn_search">搜索</button>
+    </div>
+</div>
+
+<!-- 查询条件 -->
+<div class="searchbox"></div>
+
+<div class="app-toolbar">
+    <button class="btn btn-white btn-sm" id="btn_Export_Select"><span class="fa fa-file-excel-o"></span> 导出选中记录</button>
+    <button class="btn btn-white btn-sm" id="btn_Export_All"><span class="fa fa-file-excel-o"></span> 导出所有记录</button>
+    <button class="btn btn-white btn-sm" id="btn_Delete_7dayAgoLog"><span class="fa fa-file-excel-o"></span> 删除七天前记录</button>
+</div>
+
+<!-- 列表 -->
+<table id="grid_TaskLog"></table>
+
+@section scripts{
+<!-- jqGrid -->
+<script src="~/Content/Scripts/plugins/jqgrid/i18n/grid.locale-cn.js"></script>
+<script src="~/Content/Scripts/plugins/jqgrid/jquery.jqGrid.min.js"></script>
+<script src="~/Content/Scripts/plugins/layer/laydate/laydate.js"></script>
+<!-- 自定义 -->
+<script src="~/Content/Scripts/framework.js"></script>
+<script>
+    var gridTaskLog = null;
+    $(function () {
+        //初始化查询控件
+        initSearchBox();
+
+        //初始化数据
+        initData();
+
+        //事件绑定
+        bindEvents();
+    })
+
+    //初始化搜索框
+    function initSearchBox() {
+        var options = {
+            //查询事件
+            "search": function (paramList) {
+                gridTaskLog.load(handleParam(paramList));
+            },
+            //默认展开条件数
+            "expandRow": 2,
+            //查询条件
+            "searchBoxs": [
+                 {
+                     "id": "IsSuccess",
+                     "isMultiple": false,
+                     "title": "执行状态",
+                     "data": [
+                         { "value": "0", "text": "失败" },
+                         { "value": "1", "text": "成功" }
+                     ]
+                 }
+            ]
+        };
+
+        $(".searchbox").search(options);
+
+        //日期范围限制
+        var start = {
+            elem: '#txt_runStart',
+            format: 'YYYY-MM-DD hh:mm:ss',
+            max: laydate.now(),
+            istime: true,
+            istoday: true,
+            choose: function (datas) {
+                end.min = datas; //开始日选好后，重置结束日的最小日期
+            }
+        };
+        var end = {
+            elem: '#txt_runEnd',
+            format: 'YYYY-MM-DD hh:mm:ss',
+            max: laydate.now(),
+            istime: true,
+            istoday: true,
+            choose: function (datas) {
+                start.max = datas; //结束日选好后，重置开始日的最大日期
+            }
+        };
+        laydate(start);
+        laydate(end);
+    }
+
+    //初始化数据
+    function initData() {
+        var paramList = $(".searchbox").getParamList();
+        var strHTML = '<a href="javascript:void(0)" class="action action-view pr10" title="查看">查看</a><a href="javascript:void(0)" class="action action-delete pr10" title="删除">删除</a>';
+        //初始化表格控件
+        gridTaskLog = new Ywdsoft.Grid("grid_TaskLog", {
+            idField: "LogID",
+            height: calcGridHeight(),
+            url: "/TaskLog/PostQuery",
+            postData: handleParam(paramList), //发送数据 
+            multiselect: true,
+            rownumbers: true,
+            colNames: ['任务名称', '运行时间', '执行状态', '执行结果', '操作'],
+            colModel: [
+                {
+                    name: 'TaskName',
+                    index: 'TaskName'
+                },
+                {
+                    name: 'RunTime',
+                    index: 'RunTime',
+                    width: 150,
+                    align: "center",
+                    formatter: "date",
+                    fixed: true,
+                    formatoptions: { srcformat: 'Y-m-d H:i:s', newformat: 'Y-m-d H:i:s' }
+                },
+                {
+                    name: 'IsSuccess',
+                    index: 'IsSuccess',
+                    width: 100,
+                    fixed: true,
+                    align: "center",
+                    formatter: function (cellvalue, options, rowObject) {
+                        var label_class = "";
+                        var label_text = "";
+                        switch (cellvalue) {
+                            case 1:
+                                label_class = "label-success";
+                                label_text = "成功";
+                                break;
+                            case 0:
+                                label_class = "label-warning";
+                                label_text = "失败";
+                                break;
+                            default:
+                                label_text = cellvalue;
+                                break;
+                        }
+                        return "<span class='label {1}' title='{0}'>{0}</span>".format(label_text, label_class);
+                    },
+                },
+                {
+                    name: 'Result',
+                    index: 'Result',
+                    sortable: false
+                },
+                {
+                    sortable: false,
+                    width: 150,
+                    fixed: true,
+                    title: false,
+                    align: "center",
+                    resizable: false,
+                    formatter: function (cellvalue, options, rowObject) {
+                        return '<div data-index="{0}">{1}</div>'.format(options.rowId, strHTML);
+                    }
+                }]
+        });
+
+        //定时刷新
+        //setInterval(function () {
+        //    gridTaskLog.reload();
+        //}, 2000);
+    }
+
+    //计算表格高度
+    function calcGridHeight() {
+        return $(window).height() - 210;
+    }
+
+    //处理查询参数
+    function handleParam(paramList) {
+        var FilterList = [];
+        //任务名称
+        var strTaskName = $("#txt_TaskName").val().trim();
+        if (strTaskName) {
+            FilterList.push({ "Operator": "like", "FieldName": "TaskName", "FieldValue": strTaskName });
+        }
+        //创建时间
+        var strCreateStart = $("#txt_runStart").val().trim();
+        if (strCreateStart) {
+            FilterList.push({ "Operator": "ge", "FieldName": "RunTime", "FieldValue": strCreateStart, "IsDateTime": true });
+        }
+        var strCreateEnd = $("#txt_runEnd").val().trim();
+        if (strCreateEnd) {
+            FilterList.push({ "Operator": "le", "FieldName": "RunTime", "FieldValue": strCreateEnd, "IsDateTime": true });
+        }
+        var item = null;
+        var value = null;
+        //时间范围
+        for (var i = 0, length = paramList.length; i < length; i++) {
+            item = paramList[i];
+            value = null;
+            switch (item.id) {
+                case "IsSuccess":
+                    if (item.ValueList.length > 0) {
+                        value = { "Operator": "eq", "FieldName": "IsSuccess", "FieldValue": item.ValueList.join(",") };
+                        FilterList.push(value);
+                    }
+                    break;
+                   
+                default:
+                    break;
+            }
+        }
+        return { "FilterListStr": JSON.stringify(FilterList) };
+    }
+
+    //事件绑定
+    function bindEvents() {
+
+        //导出所有记录
+        $("#btn_Export_All").on("click", function () {
+            gridTaskLog.Export("任务列表");
+        });
+
+        //导出选中记录
+        $("#btn_Export_Select").on("click", function () {
+            //获取选中数据
+            var datas = gridTaskLog.getSelectedRows();
+            if (datas.length > 0) {
+                gridTaskLog.Export("任务日志", datas);
+            } else {
+                layer.tips('请选择项', "#btn_Export_Select", {
+                    tips: 3
+                });
+            }
+        });
+        //删除7天前日志
+        $("#btn_Delete_7dayAgoLog").on("click", function () {
+
+            Ywdsoft.delConfirm(function () {
+                //加载等待层
+                var index;
+                $.ajax({
+                    type: "delete",
+                    url: "/TaskLog/Delete7DayAgoLog" ,
+                    dataType: "json",
+                    beforeSend: function () {
+                        //加载等待层
+                        index = layer.load(0);
+                    },
+                    complete: function () {
+                        layer.close(index);
+                    },
+                    success: function (data) {
+                        if (data.HasError) {
+                            layer.alert(data.Message);
+                        } else {
+                            gridTaskLog.reload();
+                        }
+                    }
+                });
+            });
+        });
+
+        //搜索
+        $("#btn_search").on("click", function () {
+            var paramList = $(".searchbox").getParamList();
+            gridTaskLog.load(handleParam(paramList));
+        });
+
+        //操作列点击事件
+        $("#grid_TaskLog").on("click", "a.action", function () {
+            var rowid = $(this).parent().attr("data-index");
+            if ($(this).hasClass("action-view")) {
+                //查看
+                openEditWin(WebState.EDIT, rowid);
+            } else if ($(this).hasClass("action-delete")) {
+                //删除
+                delTask(rowid);
+            }
+        });
+    }
+
+    //打开 新增|编辑 界面
+    function openEditWin(mode, rowid) {
+        var params = { "mode": mode, id: "" };
+        if (mode != WebState.ADD) {
+            params.id = rowid;
+        }
+        layer.open({
+            type: 2,
+            shift: -1, //禁止弹出时动画效果
+            move: false, //禁止窗口移动
+            title: WebStateCN[mode] + '任务',
+            shade: 0.8,
+            area: ['100%', '100%'],
+            content: "/TaskLog/View?" + decodeURIComponent(jQuery.param(params)),
+            end: function () {
+                if (mode != WebState.READ) {
+                    gridTaskLog.reload();
+                }
+            }
+        });
+    }
+
+    //删除任务
+    function delTask(rowid) {
+
+        Ywdsoft.delConfirm(function () {
+            //加载等待层
+            var index;
+            $.ajax({
+                type: "delete",
+                url: "/TaskLog/" + rowid,
+                dataType: "json",
+                beforeSend: function () {
+                    //加载等待层
+                    index = layer.load(0);
+                },
+                complete: function () {
+                    layer.close(index);
+                },
+                success: function (data) {
+                    if (data.HasError) {
+                        layer.alert(data.Message);
+                    } else {
+                        gridTaskLog.reload();
+                    }
+                }
+            });
+        });
+    }
+
+</script>
+}

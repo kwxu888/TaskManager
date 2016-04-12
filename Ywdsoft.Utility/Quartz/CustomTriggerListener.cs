@@ -38,7 +38,10 @@ namespace Ywdsoft.Utility.Quartz
         /// <returns></returns>
         public bool VetoJobExecution(ITrigger trigger, IJobExecutionContext context)
         {
-            TaskHelper.UpdateRecentRunTime(trigger.JobKey.Name, TimeZoneInfo.ConvertTimeFromUtc(context.NextFireTimeUtc.Value.DateTime, TimeZoneInfo.Local));
+            if (context.NextFireTimeUtc.HasValue)
+            {
+                TaskHelper.UpdateRecentRunTime(trigger.JobKey.Name, TimeZoneInfo.ConvertTimeFromUtc(context.NextFireTimeUtc.Value.DateTime, TimeZoneInfo.Local));
+            }
             return false;
         }
 
@@ -50,7 +53,10 @@ namespace Ywdsoft.Utility.Quartz
         /// <param name="triggerInstructionCode"></param>
         public void TriggerComplete(ITrigger trigger, IJobExecutionContext context, SchedulerInstruction triggerInstructionCode)
         {
-            TaskHelper.UpdateLastRunTime(trigger.JobKey.Name, TimeZoneInfo.ConvertTimeFromUtc(context.NextFireTimeUtc.Value.DateTime, TimeZoneInfo.Local));
+            if (context.NextFireTimeUtc.HasValue)
+            {
+                TaskHelper.UpdateLastRunTime(trigger.JobKey.Name, TimeZoneInfo.ConvertTimeFromUtc(context.NextFireTimeUtc.Value.DateTime, TimeZoneInfo.Local));
+            }
         }
 
         /// <summary>

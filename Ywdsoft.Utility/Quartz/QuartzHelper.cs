@@ -83,6 +83,7 @@ namespace Ywdsoft.Utility
                 {
                     //添加全局监听
                     scheduler.ListenerManager.AddTriggerListener(new CustomTriggerListener(), GroupMatcher<TriggerKey>.AnyGroup());
+                    scheduler.ListenerManager.AddJobListener(new CustomJobListener(), GroupMatcher<JobKey>.AnyGroup());
                     scheduler.Start();
 
                     ///获取所有执行中的任务
@@ -114,14 +115,14 @@ namespace Ywdsoft.Utility
         /// 删除现有任务
         /// </summary>
         /// <param name="JobKey"></param>
-        public static void DeleteJob(string JobKey)
+        public static void DeleteJob(TaskUtil taskUtil)
         {
-            JobKey jk = new JobKey(JobKey);
+            JobKey jk = new JobKey(taskUtil.TaskID.ToString());
             if (scheduler.CheckExists(jk))
             {
                 //任务已经存在则删除
                 scheduler.DeleteJob(jk);
-                LogHelper.WriteLog(string.Format("任务“{0}”已经删除", JobKey));
+                LogHelper.WriteLog(string.Format("任务“{{0}}{1}”已经删除", taskUtil.TaskID, taskUtil.TaskName));
             }
         }
 
@@ -136,7 +137,7 @@ namespace Ywdsoft.Utility
             if (isDeleteOldTask)
             {
                 //先删除现有已存在任务
-                DeleteJob(taskUtil.TaskID.ToString());
+                DeleteJob(taskUtil);
             }
             //验证是否正确的Cron表达式
             if (ValidExpression(taskUtil.CronExpressionString))
@@ -169,19 +170,39 @@ namespace Ywdsoft.Utility
                 throw new Exception(taskUtil.CronExpressionString + "不是正确的Cron表达式,无法启动该任务!");
             }
         }
+        /// <summary>
+        /// 触发一次job执行
+        /// </summary>
+        /// <param name="taskUtil"></param>
+        public static void TriggerJob(TaskUtil taskUtil)
+        {
 
+            JobKey jk = new JobKey(taskUtil.TaskID.ToString());
+            if (scheduler.CheckExists(jk))
+            {
+                //触发一次任务
+                scheduler.TriggerJob(jk);
+                LogHelper.WriteLog(string.Format("任务“{{0}}{1}”已提交执行", taskUtil.TaskID, taskUtil.TaskName));
+
+            }
+            else
+            {
+                LogHelper.WriteLog(string.Format("任务“{{0}}{1}”不存在", taskUtil.TaskID, taskUtil.TaskName));
+            }
+
+        }
         /// <summary>
         /// 暂停任务
         /// </summary>
         /// <param name="JobKey"></param>
-        public static void PauseJob(string JobKey)
+        public static void PauseJob(TaskUtil taskUtil)
         {
-            JobKey jk = new JobKey(JobKey);
+            JobKey jk = new JobKey(taskUtil.TaskID.ToString());
             if (scheduler.CheckExists(jk))
             {
                 //任务已经存在则暂停任务
                 scheduler.PauseJob(jk);
-                LogHelper.WriteLog(string.Format("任务“{0}”已经暂停", JobKey));
+                LogHelper.WriteLog(string.Format("任务“{{0}}{1}”已经暂停", taskUtil.TaskID, taskUtil.TaskName));
             }
         }
 
@@ -189,14 +210,14 @@ namespace Ywdsoft.Utility
         /// 恢复运行暂停的任务
         /// </summary>
         /// <param name="JobKey">任务key</param>
-        public static void ResumeJob(string JobKey)
+        public static void ResumeJob(TaskUtil taskUtil)
         {
-            JobKey jk = new JobKey(JobKey);
+            JobKey jk = new JobKey(taskUtil.TaskID.ToString());
             if (scheduler.CheckExists(jk))
             {
                 //任务已经存在则暂停任务
                 scheduler.ResumeJob(jk);
-                LogHelper.WriteLog(string.Format("任务“{0}”恢复运行", JobKey));
+                LogHelper.WriteLog(string.Format("任务“{{0}}{1}”恢复运行", taskUtil.TaskID, taskUtil.TaskName));
             }
         }
 

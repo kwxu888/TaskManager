@@ -88,7 +88,27 @@ namespace Ywdsoft.Modules
                 }
                 return Response.AsJson(result);
             };
+            //运行job
+            Post["/Execute/{Id}"] = r =>
+            {
+                JsonBaseModel<string> result = new JsonBaseModel<string>();
+                try
+                {
+                    string TaskId = r.Id;
+                    TaskUtil TaskUtil = TaskHelper.GetById(TaskId);
+                    QuartzHelper.TriggerJob(TaskUtil);
+                    result.HasError = false;
+                    result.Message = "已提交执行";
 
+                }
+                catch (Exception ex)
+                {
+                    result.HasError = true;
+                    result.Message = "发生异常:" + ex.Message;
+                }
+
+                return Response.AsJson(result);
+            };
             //更新任务运行状态
             Put["/{Id}/{Status:int}"] = r =>
             {
